@@ -99,11 +99,12 @@ function setMode(m){
 }
 
 // ===== HOURS SAFE =====
-function populateHours(){
- const f=document.getElementById('add-from')
- const t=document.getElementById('add-to')
+function populateHours() {
+  const f = document.getElementById('add-from');
+  const t = document.getElementById('add-to');
 
- if(!f||!t) return
+  if (!f || !t) return; // 🔥 FIX
+
 
  f.innerHTML=HOURS.map((h,i)=>`<option value="${i}">${h}</option>`).join('')
  t.innerHTML=HOURS.map((h,i)=>`<option value="${i}">${h}</option>`).join('')
@@ -158,11 +159,34 @@ function render(){
  `).join('')
 }
 
-// ===== INIT =====
-populateHours()
-load()
-seed()
-render()
+populateHours();
+loadData();
+
+// 🔥 AUTO DANE (żeby kalendarz nie był pusty)
+if (Object.keys(slots).length === 0) {
+  const dates = getWeekDates();
+
+  [0,1,2,3,4].forEach(day => {
+    const date = dates[day];
+
+    for (let i = 16; i < 19; i++) {
+      const k = dateKey(date, i);
+
+      slots[k] = {
+        status:'available',
+        hour:HOURS[i],
+        hourEnd:HOURS[i+1],
+        date:fmt(date),
+        dayName:DAYS_FULL[day],
+        dayIdx:day
+      };
+    }
+  });
+
+  saveData();
+}
+
+render();
 
 </script>
 
