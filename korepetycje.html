@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Korepetycje z matematyki</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e2ddd6;
+    --border2: #ccc8c0;
+    --text: #1a1916;
+    --text2: #6b6760;
+    --text3: #a09d98;
+    --blue: #2563eb;
+    --blue-light: #eff4ff;
+    --blue-border: #bfcffd;
+    --green: #16a34a;
+    --green-light: #f0fdf4;
+    --green-border: #bbf7d0;
+    --amber: #b45309;
+    --amber-light: #fffbeb;
+    --amber-border: #fde68a;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .app { max-width: 880px; margin: 0 auto; }
+
+  /* HEADER */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+  .header-left p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  .mode-bar { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .mode-btn {
+    padding: 8px 20px; font-family: inherit; font-size: 13px; font-weight: 500;
+    background: transparent; border: none; cursor: pointer; color: var(--text2); transition: all .15s;
+  }
+  .mode-btn.active { background: var(--text); color: #fff; }
+
+  /* PASSWORD OVERLAY */
+  .pw-overlay {
+    position: fixed; inset: 0; background: rgba(26,25,22,.55);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .pw-box {
+    background: var(--surface); border-radius: 14px; padding: 2rem 2.25rem;
+    width: 340px; box-shadow: 0 8px 40px rgba(0,0,0,.18);
+  }
+  .pw-box h2 { font-size: 17px; font-weight: 600; margin-bottom: .35rem; }
+  .pw-box p { font-size: 13px; color: var(--text2); margin-bottom: 1.25rem; }
+  .pw-box input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); font-family: 'DM Mono', monospace;
+    font-size: 15px; letter-spacing: .1em; color: var(--text);
+    background: var(--bg); margin-bottom: .75rem; outline: none;
+    transition: border-color .15s;
+  }
+  .pw-box input:focus { border-color: var(--blue); }
+  .pw-error { font-size: 12px; color: var(--red); margin-bottom: .5rem; display: none; }
+  .btn-full {
+    width: 100%; padding: 10px; background: var(--text); color: #fff;
+    border: none; border-radius: var(--radius-sm); font-family: inherit;
+    font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity .15s;
+  }
+  .btn-full:hover { opacity: .85; }
+  .pw-cancel { display: block; text-align: center; margin-top: .75rem; font-size: 13px; color: var(--text2); cursor: pointer; }
+  .pw-cancel:hover { color: var(--text); }
+
+  /* CARD */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--text2); margin-bottom: 1rem;
+  }
+
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1.1rem; }
+  .stat-val { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* FORM ROW */
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .fg { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+  .fg label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .fg select, .fg input[type=text] {
+    padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .fg select:focus, .fg input:focus { border-color: var(--blue); }
+  .btn-add {
+    padding: 9px 20px; background: var(--text); color: #fff; border: none;
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 13px;
+    font-weight: 500; cursor: pointer; white-space: nowrap; transition: opacity .15s;
+  }
+  .btn-add:hover { opacity: .85; }
+
+  /* WEEK NAV */
+  .week-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .week-nav button {
+    padding: 6px 14px; background: var(--bg); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 13px;
+    cursor: pointer; color: var(--text); transition: background .12s;
+  }
+  .week-nav button:hover { background: var(--border); }
+  .week-label { font-size: 14px; font-weight: 600; flex: 1; text-align: center; }
+
+  /* CALENDAR GRID */
+  .cal-wrap { overflow-x: auto; }
+  .cal-grid {
+    display: grid; grid-template-columns: 52px repeat(7, minmax(0,1fr));
+    gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden;
+    min-width: 540px;
+  }
+  .cal-cell {
+    background: var(--surface); display: flex; align-items: center;
+    justify-content: center; min-height: 32px; font-size: 12px;
+  }
+  .cal-head {
+    background: var(--surface2); flex-direction: column; gap: 1px;
+    padding: 6px 2px; font-size: 11px; color: var(--text2); font-weight: 500;
+  }
+  .cal-head .dn { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cal-time { background: var(--surface2); color: var(--text3); font-size: 11px; font-family: 'DM Mono', monospace; }
+  .slot {
+    width: calc(100% - 4px); height: 26px; border-radius: 4px;
+    border: none; font-size: 11px; font-weight: 500; cursor: pointer;
+    transition: opacity .12s, transform .1s; font-family: inherit;
+  }
+  .slot:hover { opacity: .8; transform: scale(0.97); }
+  .slot-available { background: var(--blue-light); color: var(--blue); border: 1px solid var(--blue-border); }
+  .slot-booked { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); cursor: default; }
+  .slot-booked:hover { opacity: 1; transform: none; }
+  .slot-pending { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber-border); cursor: default; }
+  .slot-pending:hover { opacity: 1; transform: none; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: .85rem; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; border: 1px solid; }
+
+  /* NOTIFICATIONS */
+  .notif-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+  .notif-item {
+    display: flex; gap: 10px; padding: 10px 12px;
+    background: var(--bg); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--blue); font-size: 13px;
+  }
+  .notif-text { color: var(--text); line-height: 1.5; }
+  .notif-time { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .notif-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .btn-confirm {
+    padding: 4px 12px; font-size: 12px; font-family: inherit; border-radius: var(--radius-sm);
+    border: 1px solid var(--green-border); background: var(--green-light); color: var(--green);
+    cursor: pointer; font-weight: 500;
+  }
+  .btn-confirm:hover { background: var(--green-border); }
+  .btn-reject {
+    padding: 4px 12px; font-size: 12px; font-family: inherit; border-radius: var(--radius-sm);
+    border: 1px solid #fecaca; background: var(--red-light); color: var(--red);
+    cursor: pointer; font-weight: 500;
+  }
+  .btn-reject:hover { background: #fecaca; }
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%; background: var(--red);
+    color: #fff; font-size: 10px; font-weight: 600; margin-left: 6px; vertical-align: middle;
+  }
+  .empty { text-align: center; padding: 2rem; color: var(--text3); font-size: 13px; }
+
+  /* STUDENT VIEW */
+  .slot-list { display: flex; flex-direction: column; gap: 8px; }
+  .slot-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg); font-size: 13px; flex-wrap: wrap; gap: 8px;
+  }
+  .slot-row-info strong { font-weight: 600; }
+  .slot-row-info span { color: var(--text2); margin-left: 8px; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .btn-book {
+    padding: 7px 16px; background: var(--blue); color: #fff; border: none;
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: opacity .15s;
+  }
+  .btn-book:hover { opacity: .85; }
+
+  /* BOOKING FORM */
+  .booking-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-top: .75rem;
+  }
+  .booking-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  .booking-card .fg { margin-bottom: .75rem; }
+  .level-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .75rem; }
+  .level-btn {
+    padding: 7px 14px; border: 1px solid var(--border2); border-radius: 20px;
+    background: transparent; font-family: inherit; font-size: 12px; font-weight: 500;
+    color: var(--text2); cursor: pointer; transition: all .12s;
+  }
+  .level-btn.sel { background: var(--blue-light); border-color: var(--blue-border); color: var(--blue); }
+  .booking-btns { display: flex; gap: 8px; margin-top: .25rem; }
+  .btn-cancel {
+    padding: 9px 18px; background: transparent; border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 13px;
+    cursor: pointer; color: var(--text2);
+  }
+  .btn-cancel:hover { background: var(--bg); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: #fff; padding: 10px 22px;
+    border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    z-index: 200; opacity: 0; transition: all .25s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 540px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-row { flex-direction: column; }
+    body { padding: 1rem .5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Korepetycje z matematyki</h1>
+      <p id="mode-sub">Widok ucznia</p>
+    </div>
+    <div class="mode-bar">
+      <button class="mode-btn active" id="btn-student" onclick="setMode('student')">Uczeń</button>
+      <button class="mode-btn" id="btn-teacher" onclick="tryTeacher()">Nauczyciel 🔒</button>
+    </div>
+  </div>
+
+  <!-- TEACHER VIEW -->
+  <div id="teacher-view" style="display:none">
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="s-avail">0</div><div class="stat-label">Wolne sloty</div></div>
+      <div class="stat"><div class="stat-val" id="s-pend">0</div><div class="stat-label">Oczekujące</div></div>
+      <div class="stat"><div class="stat-val" id="s-book">0</div><div class="stat-label">Potwierdzone</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dodaj dostępność</div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Dzień tygodnia</label>
+          <select id="add-day">
+            <option value="0">Poniedziałek</option><option value="1">Wtorek</option>
+            <option value="2">Środa</option><option value="3">Czwartek</option>
+            <option value="4">Piątek</option><option value="5">Sobota</option>
+            <option value="6">Niedziela</option>
+          </select>
+        </div>
+        <div class="fg"><label>Od</label><select id="add-from"></select></div>
+        <div class="fg"><label>Do</label><select id="add-to"></select></div>
+        <button class="btn-add" onclick="addSlots()">+ Dodaj sloty</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Kalendarz</div>
+      <div class="week-nav">
+        <button onclick="changeWeek(-1)">← Poprzedni</button>
+        <div class="week-label" id="wlabel-t"></div>
+        <button onclick="changeWeek(1)">Następny →</button>
+      </div>
+      <div class="cal-wrap"><div class="cal-grid" id="t-cal"></div></div>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:var(--blue-light);border-color:var(--blue-border)"></div>Dostępny (kliknij → usuń)</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--amber-light);border-color:var(--amber-border)"></div>Oczekuje na potwierdzenie</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--green-light);border-color:var(--green-border)"></div>Potwierdzony</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Powiadomienia <span id="notif-badge" class="badge" style="display:none">0</span></div>
+      <div class="notif-list" id="notif-list"><div class="empty">Brak powiadomień</div></div>
+    </div>
+  </div>
+
+  <!-- STUDENT VIEW -->
+  <div id="student-view">
+    <div class="card">
+      <div class="card-title">Dostępne terminy</div>
+      <div class="week-nav">
+        <button onclick="changeWeek(-1)">← Poprzedni</button>
+        <div class="week-label" id="wlabel-s"></div>
+        <button onclick="changeWeek(1)">Następny →</button>
+      </div>
+      <div class="slot-list" id="s-slots"><div class="empty">Brak dostępnych terminów w tym tygodniu</div></div>
+    </div>
+
+    <div class="booking-card" id="booking-card" style="display:none">
+      <h3 id="booking-title">Rezerwacja terminu</h3>
+      <div class="fg">
+        <label>Imię i nazwisko</label>
+        <input type="text" id="s-name" placeholder="np. Jan Kowalski">
+      </div>
+      <div style="font-size:12px;color:var(--text2);font-weight:500;margin-bottom:6px">Poziom nauczania</div>
+      <div class="level-grid">
+        <button class="level-btn" onclick="selLvl(this,'SP')">Szkoła podstawowa</button>
+        <button class="level-btn" onclick="selLvl(this,'LPO')">Liceum — podstawowy</button>
+        <button class="level-btn" onclick="selLvl(this,'LRO')">Liceum — rozszerzony</button>
+      </div>
+      <div class="fg">
+        <label>Uwagi (opcjonalnie)</label>
+        <input type="text" id="s-note" placeholder="np. mam problem z logarytmami">
+      </div>
+      <div class="booking-btns">
+        <button class="btn-book" onclick="confirmBooking()">Zarezerwuj termin</button>
+        <button class="btn-cancel" onclick="cancelBooking()">Anuluj</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PASSWORD OVERLAY -->
+<div class="pw-overlay" id="pw-overlay" style="display:none">
+  <div class="pw-box">
+    <h2>Panel nauczyciela</h2>
+    <p>Podaj hasło aby uzyskać dostęp</p>
+    <input type="password" id="pw-input" placeholder="Hasło" onkeydown="if(event.key==='Enter')checkPw()">
+    <div class="pw-error" id="pw-error">Nieprawidłowe hasło</div>
+    <button class="btn-full" onclick="checkPw()">Wejdź</button>
+    <span class="pw-cancel" onclick="closePw()">Anuluj</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ======= USTAWIENIA =======
+// Zmień to hasło na własne przed wgraniem na GitHub!
+const TEACHER_PASSWORD = 'matematyka2025';
+// ==========================
+
+const DAYS = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
+const DAYS_FULL = ['Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota','Niedziela'];
+const HOURS = ['7:00','7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30',
+               '12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00',
+               '16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00'];
+
+let mode = 'student';
+let weekOffset = 0;
+let slots = {};
+let notifications = [];
+let selectedSlot = null;
+let selectedLevel = null;
+let teacherUnlocked = false;
+
+// --- Storage helpers (localStorage dla pliku HTML) ---
+function saveData() {
+  try {
+    localStorage.setItem('korep_slots', JSON.stringify(slots));
+    localStorage.setItem('korep_notifs', JSON.stringify(notifications));
+  } catch(e) {}
+}
+function loadData() {
+  try {
+    const s = localStorage.getItem('korep_slots');
+    const n = localStorage.getItem('korep_notifs');
+    if (s) slots = JSON.parse(s);
+    if (n) notifications = JSON.parse(n);
+  } catch(e) {}
+}
+
+// --- Password ---
+function tryTeacher() {
+  if (teacherUnlocked) { setMode('teacher'); return; }
+  document.getElementById('pw-overlay').style.display = 'flex';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  setTimeout(() => document.getElementById('pw-input').focus(), 50);
+}
+function closePw() {
+  document.getElementById('pw-overlay').style.display = 'none';
+}
+function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  if (val === TEACHER_PASSWORD) {
+    teacherUnlocked = true;
+    closePw();
+    setMode('teacher');
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+// --- Mode ---
+function setMode(m) {
+  mode = m;
+  document.getElementById('teacher-view').style.display = m === 'teacher' ? '' : 'none';
+  document.getElementById('student-view').style.display = m === 'student' ? '' : 'none';
+  document.getElementById('btn-teacher').classList.toggle('active', m === 'teacher');
+  document.getElementById('btn-student').classList.toggle('active', m === 'student');
+  document.getElementById('mode-sub').textContent = m === 'teacher' ? 'Panel nauczyciela' : 'Widok ucznia';
+  cancelBooking();
+  render();
+}
+
+// --- Week ---
+function getWeekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + weekOffset * 7);
+  return Array.from({length:7}, (_,i) => { const d = new Date(monday); d.setDate(monday.getDate()+i); return d; });
+}
+function changeWeek(d) { weekOffset += d; render(); }
+function fmt(d) { return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`; }
+function dateKey(date, hi) { return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${hi}`; }
+
+// --- Add slots ---
+function populateHours() {
+  const f = document.getElementById('add-from');
+  const t = document.getElementById('add-to');
+  f.innerHTML = HOURS.slice(0,-1).map((h,i)=>`<option value="${i}">${h}</option>`).join('');
+  t.innerHTML = HOURS.slice(1).map((h,i)=>`<option value="${i+1}">${h}</option>`).join('');
+  f.value = 16; t.value = 18;
+}
+function addSlots() {
+  const day = parseInt(document.getElementById('add-day').value);
+  const from = parseInt(document.getElementById('add-from').value);
+  const to = parseInt(document.getElementById('add-to').value);
+  if (from >= to) { showToast('Godzina końca musi być późniejsza niż start!'); return; }
+  const dates = getWeekDates();
+  const date = dates[day];
+  let added = 0;
+  for (let i = from; i < to; i++) {
+    const k = dateKey(date, i);
+    if (!slots[k]) {
+      slots[k] = { status:'available', hour:HOURS[i], hourEnd:HOURS[i+1], date:fmt(date), dayName:DAYS_FULL[day], dayIdx:day };
+      added++;
+    }
+  }
+  saveData();
+  showToast(`Dodano ${added} slot${added===1?'':'ów'} (${HOURS[from]}–${HOURS[to]})`);
+  render();
+}
+function removeSlot(k) {
+  if (slots[k]?.status === 'available') { delete slots[k]; saveData(); render(); }
+}
+
+// --- Notifications / confirm / reject ---
+function confirmSlot(slotKey, nIdx) {
+  if (slots[slotKey]) {
+    slots[slotKey].status = 'booked';
+    notifications[nIdx].confirmed = true;
+    notifications[nIdx].text = '✅ ' + notifications[nIdx].rawText;
+    saveData(); render();
+    showToast('Rezerwacja potwierdzona!');
+  }
+}
+function rejectSlot(slotKey, nIdx) {
+  if (slots[slotKey]) {
+    slots[slotKey].status = 'available';
+    slots[slotKey].studentName = null;
+    notifications[nIdx].confirmed = false;
+    notifications[nIdx].text = '❌ Odrzucono: ' + notifications[nIdx].rawText;
+    saveData(); render();
+    showToast('Rezerwacja odrzucona — slot znów dostępny');
+  }
+}
+
+// --- Render ---
+function render() {
+  renderWeekLabels();
+  if (mode === 'teacher') { renderTeacherCal(); renderStats(); renderNotifs(); }
+  else { renderStudentSlots(); }
+}
+function renderWeekLabels() {
+  const dates = getWeekDates();
+  const label = `${fmt(dates[0])} – ${fmt(dates[6])}`;
+  document.getElementById('wlabel-t').textContent = label;
+  document.getElementById('wlabel-s').textContent = label;
+}
+function renderStats() {
+  const v = Object.values(slots);
+  document.getElementById('s-avail').textContent = v.filter(s=>s.status==='available').length;
+  document.getElementById('s-pend').textContent = v.filter(s=>s.status==='pending').length;
+  document.getElementById('s-book').textContent = v.filter(s=>s.status==='booked').length;
+}
+function renderTeacherCal() {
+  const dates = getWeekDates();
+  const disp = HOURS.slice(0,-1);
+  let html = '<div class="cal-cell cal-head"></div>';
+  dates.forEach((d,i) => {
+    html += `<div class="cal-cell cal-head"><div style="font-size:10px">${DAYS[i]}</div><div class="dn">${d.getDate()}</div></div>`;
+  });
+  disp.forEach((h,hi) => {
+    html += `<div class="cal-cell cal-time">${h}</div>`;
+    dates.forEach(d => {
+      const k = dateKey(d, hi);
+      const s = slots[k];
+      if (s) {
+        const cls = s.status==='booked'?'slot-booked':s.status==='pending'?'slot-pending':'slot-available';
+        const lbl = s.status==='booked'?'✓':s.status==='pending'?'?':'✕';
+        const title = s.status==='available'?'Usuń slot':s.studentName||'';
+        html += `<div class="cal-cell"><button class="slot ${cls}" title="${title}" onclick="${s.status==='available'?`removeSlot('${k}')`:'void(0)'}">${lbl}</button></div>`;
+      } else {
+        html += '<div class="cal-cell"></div>';
+      }
+    });
+  });
+  document.getElementById('t-cal').innerHTML = html;
+}
+function renderNotifs() {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  const unread = notifications.filter(n=>!n.read).length;
+  badge.textContent = unread;
+  badge.style.display = unread > 0 ? 'inline-flex' : 'none';
+  if (!notifications.length) { list.innerHTML = '<div class="empty">Brak powiadomień</div>'; return; }
+  list.innerHTML = notifications.slice().reverse().map((n,ri) => {
+    const i = notifications.length - 1 - ri;
+    const isPending = slots[n.slotKey]?.status === 'pending';
+    const actions = isPending
+      ? `<div class="notif-actions">
+           <button class="btn-confirm" onclick="confirmSlot('${n.slotKey}',${i})">✓ Potwierdź</button>
+           <button class="btn-reject" onclick="rejectSlot('${n.slotKey}',${i})">✕ Odrzuć</button>
+         </div>`
+      : '';
+    return `<div class="notif-item"><div>
+      <div class="notif-text">${n.text}</div>
+      <div class="notif-time">${n.time}</div>
+      ${actions}
+    </div></div>`;
+  }).join('');
+  notifications.forEach(n=>n.read=true);
+  saveData();
+}
+function renderStudentSlots() {
+  const dates = getWeekDates();
+  const disp = HOURS.slice(0,-1);
+  const available = [];
+  dates.forEach((d,di) => {
+    disp.forEach((h,hi) => {
+      const k = dateKey(d,hi);
+      const s = slots[k];
+      if (s && s.status==='available') available.push({k,d,di,hi,s});
+    });
+  });
+  const cont = document.getElementById('s-slots');
+  if (!available.length) { cont.innerHTML = '<div class="empty">Brak dostępnych terminów w tym tygodniu</div>'; return; }
+  cont.innerHTML = available.map(({k,d,di,s}) => `
+    <div class="slot-row">
+      <div class="slot-row-info"><strong>${DAYS_FULL[di]}, ${s.date}</strong><span>${s.hour} – ${s.hourEnd}</span></div>
+      <button class="btn-book" onclick="openBooking('${k}','${DAYS_FULL[di]} ${s.date} godz. ${s.hour}')">Zarezerwuj</button>
+    </div>`).join('');
+}
+
+// --- Booking ---
+function openBooking(k, label) {
+  selectedSlot = k; selectedLevel = null;
+  document.getElementById('booking-title').textContent = `Rezerwacja: ${label}`;
+  document.getElementById('booking-card').style.display = '';
+  document.getElementById('s-name').value = '';
+  document.getElementById('s-note').value = '';
+  document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('sel'));
+}
+function cancelBooking() {
+  selectedSlot = null; selectedLevel = null;
+  const c = document.getElementById('booking-card');
+  if (c) c.style.display = 'none';
+}
+function selLvl(btn, l) {
+  selectedLevel = l;
+  document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+function lvlLabel(l) { return l==='SP'?'Szkoła podstawowa':l==='LPO'?'Liceum (poziom podstawowy)':'Liceum (poziom rozszerzony)'; }
+function confirmBooking() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { showToast('Podaj imię i nazwisko'); return; }
+  if (!selectedLevel) { showToast('Wybierz poziom nauczania'); return; }
+  if (!selectedSlot || !slots[selectedSlot]) { showToast('Ten termin jest już niedostępny'); cancelBooking(); render(); return; }
+  const s = slots[selectedSlot];
+  const note = document.getElementById('s-note').value.trim();
+  slots[selectedSlot] = {...s, status:'pending', studentName:name, level:selectedLevel, note};
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const raw = `${name} · ${s.dayName}, ${s.date} ${s.hour} · ${lvlLabel(selectedLevel)}${note?' · '+note:''}`;
+  notifications.push({ text:'📋 Nowa prośba: '+raw, rawText:raw, time:`Dziś ${timeStr}`, read:false, slotKey:selectedSlot });
+  saveData();
+  showToast('Prośba wysłana! Czekaj na potwierdzenie nauczyciela.');
+  cancelBooking();
+  render();
+}
+
+// --- Toast ---
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+// --- Init ---
+populateHours();
+loadData();
+render();
+</script>
+</body>
+</html>
