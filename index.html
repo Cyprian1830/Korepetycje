@@ -9,77 +9,161 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: 'DM Sans', sans-serif; background:#f7f6f2; margin:0; padding:2rem; }
-.app { max-width:800px; margin:auto; }
-.card { background:white; padding:20px; border-radius:10px; margin-top:20px; }
-.slot-row { display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee; }
-button { background:#2563eb; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#f7f6f2;padding:20px}
+.app{max-width:900px;margin:auto}
+.card{background:white;border-radius:10px;padding:20px;margin-top:20px}
+button{cursor:pointer}
+
+/* minimal UI żeby było czytelnie */
+.slot-row{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #eee}
+.mode-bar button{margin-right:10px}
 </style>
 </head>
 
 <body>
 <div class="app">
+
 <h1>Korepetycje z matematyki</h1>
 
+<div class="mode-bar">
+<button onclick="setMode('student')">Uczeń</button>
+<button onclick="setMode('teacher')">Nauczyciel</button>
+</div>
+
+<div id="student-view">
 <div class="card">
 <h3>Dostępne terminy</h3>
-<div id="slots"></div>
+<div id="s-slots"></div>
 </div>
+</div>
+
+<div id="teacher-view" style="display:none">
+<div class="card">
+<h3>Dodaj sloty</h3>
+<select id="add-day">
+<option value="0">Pon</option>
+<option value="1">Wt</option>
+<option value="2">Śr</option>
+<option value="3">Czw</option>
+<option value="4">Pt</option>
+</select>
+
+<select id="add-from"></select>
+<select id="add-to"></select>
+
+<button onclick="addSlots()">Dodaj</button>
+</div>
+</div>
+
 </div>
 
 <script>
-const HOURS = ['16:00','17:00','18:00'];
+const DAYS_FULL=['Pon','Wt','Śr','Czw','Pt','Sob','Nd']
+const HOURS=['7:00','8:00','9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00']
 
-let slots = JSON.parse(localStorage.getItem("slots") || "{}");
+let slots={}
 
-// 🔥 DEMO DANE
-if (Object.keys(slots).length === 0) {
-  const today = new Date();
+// ===== STORAGE =====
+function save(){localStorage.setItem("slots",JSON.stringify(slots))}
+function load(){const s=localStorage.getItem("slots"); if(s) slots=JSON.parse(s)}
 
-  for (let i = 0; i < 3; i++) {
-    const d = new Date();
-    d.setDate(today.getDate() + i);
+// ===== DEMO DATA =====
+function seed(){
+ if(Object.keys(slots).length>0) return;
 
-    HOURS.forEach(h => {
-      const key = d.toDateString() + h;
+ const today=new Date()
 
-      slots[key] = {
-        date: d.toLocaleDateString(),
-        hour: h,
-        status: "available"
-      };
-    });
+ for(let i=0;i<3;i++){
+  const d=new Date()
+  d.setDate(today.getDate()+i)
+
+  for(let h=9;h<12;h++){
+   const k=d.toDateString()+h
+
+   slots[k]={
+    date:d.toLocaleDateString(),
+    hour:HOURS[h],
+    status:'available'
+   }
   }
+ }
 
-  localStorage.setItem("slots", JSON.stringify(slots));
+ save()
 }
 
-// 🔥 RENDER
-function render() {
-  const container = document.getElementById("slots");
-  const available = Object.entries(slots).filter(([k,s]) => s.status === "available");
+// ===== MODE =====
+function setMode(m){
+ document.getElementById('student-view').style.display=m==='student'?'':'none'
+ document.getElementById('teacher-view').style.display=m==='teacher'?'':'none'
+}
 
-  if (!available.length) {
-    container.innerHTML = "Brak terminów 😕";
-    return;
+// ===== HOURS SAFE =====
+function populateHours(){
+ const f=document.getElementById('add-from')
+ const t=document.getElementById('add-to')
+
+ if(!f||!t) return
+
+ f.innerHTML=HOURS.map((h,i)=>`<option value="${i}">${h}</option>`).join('')
+ t.innerHTML=HOURS.map((h,i)=>`<option value="${i}">${h}</option>`).join('')
+}
+
+// ===== ADD =====
+function addSlots(){
+ const day=parseInt(document.getElementById('add-day').value)
+ const from=parseInt(document.getElementById('add-from').value)
+ const to=parseInt(document.getElementById('add-to').value)
+
+ const d=new Date()
+ d.setDate(d.getDate()+day)
+
+ for(let i=from;i<to;i++){
+  const k=d.toDateString()+i
+
+  slots[k]={
+   date:d.toLocaleDateString(),
+   hour:HOURS[i],
+   status:'available'
   }
+ }
 
-  container.innerHTML = available.map(([k,s]) => `
-    <div class="slot-row">
-      <div>${s.date} — ${s.hour}</div>
-      <button onclick="book('${k}')">Zarezerwuj</button>
-    </div>
-  `).join("");
+ save()
+ render()
 }
 
-// 🔥 BOOK
-function book(key) {
-  slots[key].status = "booked";
-  localStorage.setItem("slots", JSON.stringify(slots));
-  render();
+// ===== BOOK =====
+function book(k){
+ slots[k].status='booked'
+ save()
+ render()
 }
 
-render();
+// ===== RENDER =====
+function render(){
+ const cont=document.getElementById("s-slots")
+
+ const available=Object.entries(slots).filter(([k,s])=>s.status==='available')
+
+ if(!available.length){
+  cont.innerHTML="Brak terminów"
+  return
+ }
+
+ cont.innerHTML=available.map(([k,s])=>`
+  <div class="slot-row">
+   <div>${s.date} ${s.hour}</div>
+   <button onclick="book('${k}')">Rezerwuj</button>
+  </div>
+ `).join('')
+}
+
+// ===== INIT =====
+populateHours()
+load()
+seed()
+render()
+
 </script>
 
 </body>
