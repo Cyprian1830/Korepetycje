@@ -237,28 +237,34 @@
 
 <!-- Firebase SDK -->
 <script type="module">
-// ============================================================
-//  FIREBASE CONFIG — wklej tutaj swój obiekt firebaseConfig
-//  Przykład jak to powinno wyglądać (zastąp wszystkie wartości):
-//
-//  const firebaseConfig = {
-//    apiKey: "AIzaSy...",
-//    authDomain: "twoj-projekt.firebaseapp.com",
-//    projectId: "twoj-projekt",
-//    storageBucket: "twoj-projekt.appspot.com",
-//    messagingSenderId: "123456789",
-//    appId: "1:123456789:web:abc123"
-//  };
-//
-// ============================================================
-const firebaseConfig = null; // ← ZASTĄP TO SWOIM OBIEKTEM
-// ============================================================
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBQ7j2A1hYTB2wDG5tuz3L99_w6FTU57iU",
+  authDomain: "edukrok-5e9d1.firebaseapp.com",
+  projectId: "edukrok-5e9d1",
+  storageBucket: "edukrok-5e9d1.firebasestorage.app",
+  messagingSenderId: "800549846114",
+  appId: "1:800549846114:web:eab6f7b3de57a9a074a53b",
+  measurementId: "G-LMQQ9K4ECG"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ======= HASŁO NAUCZYCIELA =======
-const TEACHER_PASSWORD = 'matematyka2025'; // ← ZMIEŃ NA SWOJE
+const TEACHER_PASSWORD = 'matematyka2026'; // ← ZMIEŃ NA SWOJE
 // =================================
 
 const DAYS = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
