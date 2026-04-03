@@ -493,9 +493,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <script>
-// ============================================================
-//  FIREBASE CONFIG
-// ============================================================
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBQ7j2A1hYTB2wDG5tuz3L99_w6FTU57iU",
   authDomain: "edukrok-5e9d1.firebaseapp.com",
@@ -505,7 +512,10 @@ const firebaseConfig = {
   appId: "1:800549846114:web:eab6f7b3de57a9a074a53b",
   measurementId: "G-LMQQ9K4ECG"
 };
-// ============================================================
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 const TEACHER_PASSWORD = 'matematyka2025';
 
