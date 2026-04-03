@@ -489,7 +489,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
 // ============================================================
 //  FIREBASE CONFIG
 // ============================================================
@@ -528,8 +531,8 @@ async function initFirebase() {
     loadLocal(); render(); return;
   }
   try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
     onSnapshot(collection(db,'slots'), snap => {
       slots = {}; snap.forEach(d => { slots[d.id] = d.data(); }); render();
     });
