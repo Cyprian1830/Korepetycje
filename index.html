@@ -521,7 +521,7 @@ let db = null;
 
 // ── FIREBASE / LOCAL ──────────────────────────────────────
 async function initFirebase() {
-  if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.apiKey === 'AIzaSy...') {
+ if (!firebaseConfig || !firebaseConfig.projectId) {
     document.getElementById('config-warn').style.display = '';
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-app').style.display = '';
