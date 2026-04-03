@@ -489,14 +489,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 <div class="toast" id="toast"></div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-<script>
-
-
-// Import the functions you need from the SDKs you need
-
+<script type="module">
+// ============================================================
+//  FIREBASE CONFIG
+// ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyBQ7j2A1hYTB2wDG5tuz3L99_w6FTU57iU",
   authDomain: "edukrok-5e9d1.firebaseapp.com",
@@ -506,10 +502,12 @@ const firebaseConfig = {
   appId: "1:800549846114:web:eab6f7b3de57a9a074a53b",
   measurementId: "G-LMQQ9K4ECG"
 };
-
+// ============================================================
 
 const TEACHER_PASSWORD = 'matematyka2025';
 
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const DAYS = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
 const DAYS_FULL = ['Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota','Niedziela'];
@@ -523,15 +521,15 @@ let db = null;
 
 // ── FIREBASE / LOCAL ──────────────────────────────────────
 async function initFirebase() {
- if (!firebaseConfig || !firebaseConfig.projectId) {
+  if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.apiKey === 'AIzaSy...') {
     document.getElementById('config-warn').style.display = '';
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-app').style.display = '';
     loadLocal(); render(); return;
   }
   try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
     onSnapshot(collection(db,'slots'), snap => {
       slots = {}; snap.forEach(d => { slots[d.id] = d.data(); }); render();
     });
