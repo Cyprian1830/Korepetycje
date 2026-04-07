@@ -336,6 +336,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
     <!-- CALENDAR TAB -->
     <div class="tab-panel active" id="tab-cal">
+      <div id="weekly-earn-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1.25rem;margin-bottom:1rem;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">📊 Szacowane zarobki w tym tygodniu</div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
+          <div style="text-align:center">
+            <div id="week-est-lessons" style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">0</div>
+            <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Lekcji w tyg.</div>
+          </div>
+          <div style="text-align:center">
+            <div id="week-est-earn" style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--amber)">— zł</div>
+            <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Estymacja</div>
+          </div>
+          <div style="text-align:center">
+            <div id="week-done-earn" style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green)">0 zł</div>
+            <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Zarobione wyk.</div>
+          </div>
+        </div>
+      </div>
       <div class="stats">
         <div class="stat stat-avail"><div class="stat-val" id="s-avail">0</div><div class="stat-label">Wolne sloty</div></div>
         <div class="stat stat-pend"><div class="stat-val" id="s-pend">0</div><div class="stat-label">Oczekujące</div></div>
@@ -518,6 +535,9 @@ let slots = {}, notifications = [], students = {};
 let selectedSlot = null, selectedLevel = null, teacherUnlocked = false;
 let moveSlotKey = null;
 let db = null;
+// local draft state to avoid re-render destroying input focus
+const topicDraft = {};   // lessonKey -> value
+const topicTimers = {};  // lessonKey -> debounce timer
 
 // ── FIREBASE / LOCAL ──────────────────────────────────────
 async function initFirebase() {
@@ -539,7 +559,12 @@ async function initFirebase() {
     });
     onSnapshot(collection(db,'students'), snap => {
       students = {}; snap.forEach(d => { students[d.id] = d.data(); });
-      if (mode==='teacher') renderStudentList();
+      if (mode==='teacher') {
+        // Don't re-render student list if user is typing in a topic/earnings field
+        const focused = document.activeElement;
+        const isTypingInList = focused && (focused.closest?.('.student-lessons'));
+        if (!isTypingInList) renderStudentList();
+      }
     });
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-app').style.display = '';
@@ -758,18 +783,28 @@ window.updateEarnings = async (studentId, lessonIdx, val) => {
   if (!db) saveLocal();
 };
 
-// ── UPDATE TOPIC ──────────────────────────────────────────
-window.updateTopic = async (studentId, lessonIdx, val) => {
-  const st = students[studentId]; if (!st) return;
-  st.lessons[lessonIdx].topic = val;
-  // also update slot tooltip
-  const sl = st.lessons[lessonIdx].slotKey;
-  if (sl && slots[sl]) {
-    if (db) await updateDoc(doc(db,'slots',sl), { topic: val });
-    else { slots[sl].topic = val; }
+// ── UPDATE TOPIC (debounced — no re-render on keystroke) ─────────────────
+window.updateTopic = (studentId, lessonIdx, val) => {
+  const key = studentId + '_' + lessonIdx;
+  topicDraft[key] = val;
+  // update in-memory immediately so tooltip reflects it
+  if (students[studentId]?.lessons?.[lessonIdx] !== undefined) {
+    students[studentId].lessons[lessonIdx].topic = val;
+    const sl = students[studentId].lessons[lessonIdx].slotKey;
+    if (sl && slots[sl]) slots[sl].topic = val;
   }
-  await saveStudent(studentId, st);
-  if (!db) saveLocal();
+  clearTimeout(topicTimers[key]);
+  topicTimers[key] = setTimeout(async () => {
+    const st = students[studentId]; if (!st) return;
+    st.lessons[lessonIdx].topic = val;
+    const sl = st.lessons[lessonIdx].slotKey;
+    if (sl && slots[sl]) {
+      if (db) await updateDoc(doc(db,'slots',sl), { topic: val }).catch(()=>{});
+      else slots[sl].topic = val;
+    }
+    if (db) await saveStudent(studentId, st).catch(()=>{});
+    else saveLocal();
+  }, 800);
 };
 
 // ── STUDENT HISTORY MODAL ────────────────────────────────
@@ -827,7 +862,7 @@ window.closeHistory = () => { document.getElementById('history-overlay').style.d
 function render() {
   renderWeekLabels();
   if (mode==='teacher') {
-    renderTeacherCal(); renderStats(); renderNotifsBadge();
+    renderTeacherCal(); renderStats(); renderWeeklyEarnings(); renderNotifsBadge();
     const active = document.querySelector('.tab-panel.active');
     if (active?.id==='tab-students') renderStudentList();
     if (active?.id==='tab-earnings') renderEarnings();
@@ -841,6 +876,42 @@ function renderWeekLabels() {
   const dates = getWeekDates(), label = `${fmt(dates[0])} – ${fmt(dates[6])}`;
   const wt = document.getElementById('wlabel-t'); if (wt) wt.textContent = label;
   const ws = document.getElementById('wlabel-s'); if (ws) ws.textContent = label;
+}
+
+function renderWeeklyEarnings() {
+  const dates = getWeekDates();
+  const weekFmts = new Set(dates.map(d => fmt(d)));
+  let lessonsThisWeek = 0, earnedDone = 0;
+  const avgRates = [];
+
+  // collect all lessons this week
+  Object.values(students).forEach(st => {
+    (st.lessons||[]).forEach(l => {
+      if (!weekFmts.has(l.date)) return;
+      lessonsThisWeek++;
+      if (l.done && l.earnings) {
+        earnedDone += parseFloat(l.earnings)||0;
+        avgRates.push(parseFloat(l.earnings)||0);
+      }
+    });
+  });
+
+  // estimate: use average rate from ALL done lessons with earnings
+  let allRates = [];
+  Object.values(students).forEach(st => {
+    (st.lessons||[]).filter(l=>l.done&&l.earnings).forEach(l => allRates.push(parseFloat(l.earnings)||0));
+  });
+  const avgRate = allRates.length ? allRates.reduce((a,b)=>a+b,0)/allRates.length : null;
+  const estimated = avgRate ? Math.round(avgRate * lessonsThisWeek) : null;
+
+  const bar = document.getElementById('weekly-earn-bar');
+  if (!bar) return;
+  if (lessonsThisWeek === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+
+  document.getElementById('week-est-lessons').textContent = lessonsThisWeek;
+  document.getElementById('week-est-earn').textContent = estimated !== null ? estimated + ' zł' : '— zł';
+  document.getElementById('week-done-earn').textContent = earnedDone > 0 ? earnedDone.toFixed(0) + ' zł' : '0 zł';
 }
 
 function renderStats() {
@@ -966,7 +1037,7 @@ function renderStudentList() {
         <span class="pill ${lvlClass}">${lvlLabel}</span>
         <span class="lesson-done-tag ${l.done?'done':'notdone'}">${l.done?'✓ Wyk.':'⏳ Ocz.'}</span>
         <div class="topic-inline">
-          <input type="text" placeholder="Wpisz temat lekcji…" value="${l.topic||''}"
+          <input type="text" placeholder="Wpisz temat lekcji…" value="${topicDraft[id+'_'+i]!==undefined?topicDraft[id+'_'+i]:(l.topic||'')}"
             oninput="updateTopic('${id}',${i},this.value)"
             title="Temat lekcji — widoczny w historii i tooltipie kalendarza">
         </div>
