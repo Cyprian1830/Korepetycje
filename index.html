@@ -297,6 +297,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   .modal{padding:1.25rem}
   .tabs{flex-wrap:wrap}
 }
+
+/* ── STUDENT VIEW TOGGLE ────────────────── */
+.view-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px;gap:2px;width:fit-content;margin-bottom:1rem}
+.view-toggle-btn{padding:6px 16px;font-family:inherit;font-size:12px;font-weight:600;background:transparent;border:none;cursor:pointer;color:var(--text2);border-radius:9px;transition:all .18s;display:flex;align-items:center;gap:5px}
+.view-toggle-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* ── STUDENT CALENDAR ───────────────────── */
+.s-cal-wrap{overflow-x:auto;border-radius:var(--rs);border:1px solid var(--border)}
+.s-cal-grid{display:grid;grid-template-columns:54px repeat(7,minmax(0,1fr));gap:0;min-width:500px}
+.s-cal-cell{background:var(--surface);display:flex;align-items:center;justify-content:center;min-height:40px;font-size:12px;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.s-cal-cell:last-child,.s-cal-cell:nth-child(8n){border-right:none}
+.s-cal-head{background:var(--surface2);flex-direction:column;gap:2px;padding:8px 4px;font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-bottom:2px solid var(--border2)}
+.s-cal-head .dn{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.3px;text-transform:none}
+.s-cal-head.today-col{background:#eff6ff}
+.s-cal-head.today-col .dn{color:var(--accent)}
+.s-cal-time{background:var(--surface2);color:var(--text3);font-size:11px;font-family:'JetBrains Mono',monospace}
+.s-slot-avail{width:calc(100% - 6px);height:32px;border-radius:5px;border:1.5px solid var(--accent-b);background:var(--accent-l);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
+.s-slot-avail:hover{background:var(--accent);color:#fff;transform:scale(1.05)}
+.s-slot-taken{width:calc(100% - 6px);height:32px;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);font-size:10px;font-weight:600;cursor:default;font-family:inherit}
 </style>
 </head>
 <body>
@@ -425,13 +444,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="card">
       <div class="card-header">
         <div class="card-title">Dostępne terminy lekcji</div>
-        <div class="week-nav">
-          <button onclick="changeWeek(-1)">← Poprz.</button>
-          <div class="week-label" id="wlabel-s"></div>
-          <button onclick="changeWeek(1)">Nast. →</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="s-view-list-btn" onclick="setStudentView('list')">☰ Lista</button>
+            <button class="view-toggle-btn" id="s-view-cal-btn" onclick="setStudentView('cal')">📅 Kalendarz</button>
+          </div>
+          <div class="week-nav" style="margin-bottom:0">
+            <button onclick="changeWeek(-1)">← Poprz.</button>
+            <div class="week-label" id="wlabel-s"></div>
+            <button onclick="changeWeek(1)">Nast. →</button>
+          </div>
         </div>
       </div>
-      <div class="slot-list" id="s-slots"><div class="empty">Ładowanie…</div></div>
+      <!-- LIST VIEW -->
+      <div id="s-view-list">
+        <div class="slot-list" id="s-slots"><div class="empty">Ładowanie…</div></div>
+      </div>
+      <!-- CALENDAR VIEW -->
+      <div id="s-view-cal" style="display:none">
+        <div class="s-cal-wrap"><div class="s-cal-grid" id="s-cal-grid"></div></div>
+        <div class="legend" style="margin-top:.85rem">
+          <div class="leg"><div class="leg-dot" style="background:var(--accent-l);border:1.5px solid var(--accent-b)"></div>Dostępny — kliknij aby zarezerwować</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--surface2);border:1.5px solid var(--border)"></div>Zajęty</div>
+        </div>
+      </div>
     </div>
 
     <!-- BOOKING FORM — scroll target -->
@@ -534,6 +570,7 @@ let mode = 'student', weekOffset = 0;
 let slots = {}, notifications = [], students = {};
 let selectedSlot = null, selectedLevel = null, teacherUnlocked = false;
 let moveSlotKey = null;
+let studentViewMode = 'list'; // 'list' or 'cal'
 let db = null;
 // local draft state to avoid re-render destroying input focus
 const topicDraft = {};   // lessonKey -> value
@@ -619,6 +656,16 @@ window.checkPw = () => {
     document.getElementById('pw-input').value = '';
     document.getElementById('pw-input').focus();
   }
+};
+
+// ── STUDENT VIEW TOGGLE ──────────────────────────────────
+window.setStudentView = (v) => {
+  studentViewMode = v;
+  document.getElementById('s-view-list').style.display = v==='list' ? '' : 'none';
+  document.getElementById('s-view-cal').style.display  = v==='cal'  ? '' : 'none';
+  document.getElementById('s-view-list-btn').classList.toggle('active', v==='list');
+  document.getElementById('s-view-cal-btn').classList.toggle('active', v==='cal');
+  if (v==='cal') renderStudentCal();
 };
 
 // ── MODE & TABS ───────────────────────────────────────────
@@ -1110,6 +1157,44 @@ function renderEarnings() {
   ).join('');
 }
 
+// ── STUDENT CALENDAR VIEW ────────────────────────────────
+function renderStudentCal() {
+  const dates = getWeekDates();
+  const DAYS_S = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
+  const disp = HOURS.slice(0,-1);
+  const grid = document.getElementById('s-cal-grid');
+  if (!grid) return;
+
+  let html = '<div class="s-cal-cell s-cal-head" style="border-right:1px solid var(--border2)"></div>';
+  dates.forEach((d,i) => {
+    const todayClass = isToday(d) ? ' today-col' : '';
+    html += `<div class="s-cal-cell s-cal-head${todayClass}"><div>${DAYS_S[i]}</div><div class="dn">${d.getDate()}</div></div>`;
+  });
+
+  disp.forEach((h,hi) => {
+    const isLast = hi===disp.length-1;
+    html += `<div class="s-cal-cell s-cal-time" style="${isLast?'border-bottom:none':''}">${h}</div>`;
+    dates.forEach((d,di) => {
+      const k = dateKey(d, hi), s = slots[k];
+      const cellStyle = `${di===6?'border-right:none':''}${isLast?';border-bottom:none':''}`;
+      if (s && s.status === 'available') {
+        const label = `${s.dayName}, ${s.date} · ${s.hour}–${s.hourEnd}`;
+        html += `<div class="s-cal-cell" style="${cellStyle};padding:3px">
+          <button class="s-slot-avail" onclick="openBooking('${k}','${label}')" title="Zarezerwuj ${s.hour}–${s.hourEnd}">✓</button>
+        </div>`;
+      } else if (s && s.status !== 'available') {
+        html += `<div class="s-cal-cell" style="${cellStyle};padding:3px">
+          <button class="s-slot-taken" title="Zajęty">—</button>
+        </div>`;
+      } else {
+        html += `<div class="s-cal-cell" style="${cellStyle}"></div>`;
+      }
+    });
+  });
+
+  grid.innerHTML = html;
+}
+
 // ── STUDENT VIEW ─────────────────────────────────────────
 function renderStudentSlots() {
   const dates = getWeekDates(), disp = HOURS.slice(0,-1);
@@ -1139,6 +1224,9 @@ function renderStudentSlots() {
     html += '<div style="margin-bottom:.85rem"></div>';
   });
   cont.innerHTML = html;
+
+  // also refresh calendar view if active
+  if (studentViewMode === 'cal') renderStudentCal();
 }
 
 // ── BOOKING — scroll to form ──────────────────────────────
