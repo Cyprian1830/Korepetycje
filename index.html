@@ -1161,9 +1161,20 @@ function renderEarnings() {
 function renderStudentCal() {
   const dates = getWeekDates();
   const DAYS_S = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
-  const disp = HOURS.slice(0,-1);
   const grid = document.getElementById('s-cal-grid');
   if (!grid) return;
+
+  // Only show rows where at least one slot (available OR taken) exists this week
+  const activeHourIndices = [];
+  HOURS.slice(0,-1).forEach((h, hi) => {
+    const hasAny = dates.some(d => slots[dateKey(d, hi)]);
+    if (hasAny) activeHourIndices.push(hi);
+  });
+
+  if (activeHourIndices.length === 0) {
+    grid.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px;grid-column:1/-1">Brak dostępnych terminów w tym tygodniu</div>';
+    return;
+  }
 
   let html = '<div class="s-cal-cell s-cal-head" style="border-right:1px solid var(--border2)"></div>';
   dates.forEach((d,i) => {
@@ -1171,10 +1182,11 @@ function renderStudentCal() {
     html += `<div class="s-cal-cell s-cal-head${todayClass}"><div>${DAYS_S[i]}</div><div class="dn">${d.getDate()}</div></div>`;
   });
 
-  disp.forEach((h,hi) => {
-    const isLast = hi===disp.length-1;
+  activeHourIndices.forEach((hi, rowIdx) => {
+    const h = HOURS[hi];
+    const isLast = rowIdx === activeHourIndices.length - 1;
     html += `<div class="s-cal-cell s-cal-time" style="${isLast?'border-bottom:none':''}">${h}</div>`;
-    dates.forEach((d,di) => {
+    dates.forEach((d, di) => {
       const k = dateKey(d, hi), s = slots[k];
       const cellStyle = `${di===6?'border-right:none':''}${isLast?';border-bottom:none':''}`;
       if (s && s.status === 'available') {
