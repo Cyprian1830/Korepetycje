@@ -519,7 +519,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <strong>💳 Prośba o płatność z góry</strong>
         Bardzo proszę o opłacenie zajęć <strong>przed</strong> lekcją. W tytule przelewu wpisz:<br>
         <div class="payment-transfer">
-          <span id="success-transfer-title">Korepetycje — [imię ucznia]</span>
+          <span id="success-transfer-title">Korepetycje — [imię ucznia] [data]</span>
           <button class="copy-btn" onclick="copyTransferTitle()">Kopiuj</button>
         </div>
       </div>
@@ -1132,7 +1132,7 @@ function renderStudentList() {
             ${!l.done?'disabled':''} style="${!l.done?'opacity:.35':''}">
         </div>
         <div class="lesson-actions">
-          <button class="pay-btn ${l.paid?'pay-paid':'pay-unpaid'}" onclick="togglePaid('${id}',${i})">${l.paid?'💚 Opłacone':'🔴 Nieopłacone'}</button>
+          <button class="pay-btn ${l.paid?'pay-paid':'pay-unpaid'}" onclick="togglePaid('${id}',${i},this)">${l.paid?'💚 Opłacone':'🔴 Nieopłacone'}</button>
           <button class="btn-icon btn-done-toggle" onclick="toggleDone('${id}',${i})">${l.done?'↩ Cofnij':'✓ Wyk.'}</button>
           <button class="btn-icon btn-move" onclick="openMove('${id}',${i})">↕</button>
           <button class="btn-icon btn-del" onclick="deleteLesson('${id}',${i})">✕</button>
@@ -1338,7 +1338,11 @@ window.confirmBooking = async () => {
   }
   // show success screen with student name in transfer title
   const studentNameFinal = name;
-  document.getElementById('success-transfer-title').textContent = `Korepetycje — ${studentNameFinal}`;
+  // Build transfer title: "Korepetycje — Jan Kowalski 14.04.2025"
+  const slotDate = slots[selectedSlot]?.date || '';
+  const slotYear = new Date().getFullYear();
+  const fullDate = slotDate ? slotDate + '.' + slotYear : '';
+  document.getElementById('success-transfer-title').textContent = `Korepetycje — ${studentNameFinal}${fullDate ? ' ' + fullDate : ''}`;
   document.getElementById('booking-card').style.display = 'none';
   const successEl = document.getElementById('booking-success');
   successEl.style.display = '';
@@ -1364,12 +1368,18 @@ window.copyTransferTitle = () => {
 };
 
 // ── PAYMENT TOGGLE ────────────────────────────────────────
-window.togglePaid = async (studentId, lessonIdx) => {
+window.togglePaid = async (studentId, lessonIdx, btnEl) => {
   const st = students[studentId]; if (!st) return;
   st.lessons[lessonIdx].paid = !st.lessons[lessonIdx].paid;
+  const isPaid = st.lessons[lessonIdx].paid;
+  // update button immediately in DOM — no waiting for Firebase re-render
+  if (btnEl) {
+    btnEl.className = 'pay-btn ' + (isPaid ? 'pay-paid' : 'pay-unpaid');
+    btnEl.textContent = isPaid ? '💚 Opłacone' : '🔴 Nieopłacone';
+  }
   await saveStudent(studentId, st);
   if (!db) render();
-  showToast(st.lessons[lessonIdx].paid ? '💚 Oznaczono jako opłacone' : '🔴 Oznaczono jako nieopłacone');
+  showToast(isPaid ? '💚 Oznaczono jako opłacone' : '🔴 Oznaczono jako nieopłacone');
 };
 
 // ── TOAST ────────────────────────────────────────────────
