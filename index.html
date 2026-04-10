@@ -316,6 +316,26 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .s-slot-avail{width:calc(100% - 6px);height:32px;border-radius:5px;border:1.5px solid var(--accent-b);background:var(--accent-l);color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
 .s-slot-avail:hover{background:var(--accent);color:#fff;transform:scale(1.05)}
 .s-slot-taken{width:calc(100% - 6px);height:32px;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);font-size:10px;font-weight:600;cursor:default;font-family:inherit}
+
+/* ── PAYMENT STATUS BTN ─────────────────── */
+.pay-btn{padding:3px 10px;font-size:11px;font-family:inherit;border-radius:var(--rxs);cursor:pointer;font-weight:700;border:1.5px solid;background:transparent;transition:all .15s;white-space:nowrap}
+.pay-unpaid{color:var(--red);border-color:var(--red-b)}
+.pay-unpaid:hover{background:var(--red-l)}
+.pay-paid{color:var(--green);border-color:var(--green-b)}
+.pay-paid:hover{background:var(--green-l)}
+
+/* ── BOOKING SUCCESS SCREEN ─────────────── */
+.booking-success{background:var(--surface);border:1.5px solid var(--green-b);border-radius:var(--r);padding:2rem 1.5rem;margin-top:.75rem;box-shadow:0 0 0 4px rgba(21,128,61,.06);animation:fadeIn .3s ease}
+.success-icon{font-size:44px;display:block;text-align:center;margin-bottom:1rem}
+.booking-success h3{font-size:18px;font-weight:700;color:var(--green);margin-bottom:.5rem;text-align:center}
+.booking-success .success-sub{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:1rem;text-align:center}
+.payment-note{background:var(--amber-l);border:1.5px solid var(--amber-b);border-radius:var(--rs);padding:1rem 1.15rem;margin:1rem 0;font-size:13px;color:var(--amber);font-weight:500;line-height:1.6}
+.payment-note strong{font-weight:700;display:block;margin-bottom:.4rem;font-size:14px}
+.payment-transfer{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:.6rem 1rem;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text);margin-top:.5rem;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.copy-btn{padding:3px 10px;font-size:11px;font-family:inherit;border:1px solid var(--border2);border-radius:var(--rxs);background:var(--surface);cursor:pointer;font-weight:600;color:var(--text2);transition:all .12s;white-space:nowrap}
+.copy-btn:hover{background:var(--surface3)}
+.booking-success-btn{display:block;width:100%;padding:10px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:1rem;text-align:center}
+.booking-success-btn:hover{opacity:.88}
 </style>
 </head>
 <body>
@@ -488,6 +508,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <button class="btn-book" onclick="confirmBooking()">Wyślij prośbę o rezerwację</button>
         <button class="btn-cancel" onclick="cancelBooking()">Anuluj</button>
       </div>
+    </div>
+
+    <!-- SUCCESS SCREEN -->
+    <div class="booking-success" id="booking-success" style="display:none">
+      <span class="success-icon">✅</span>
+      <h3>Prośba o rezerwację wysłana!</h3>
+      <p class="success-sub">Nauczyciel odezwie się wkrótce z potwierdzeniem.<br>Do zobaczenia na lekcji! 📐</p>
+      <div class="payment-note">
+        <strong>💳 Prośba o płatność z góry</strong>
+        Bardzo proszę o opłacenie zajęć <strong>przed</strong> lekcją. W tytule przelewu wpisz:<br>
+        <div class="payment-transfer">
+          <span id="success-transfer-title">Korepetycje — [imię ucznia]</span>
+          <button class="copy-btn" onclick="copyTransferTitle()">Kopiuj</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text3);text-align:center">Numer konta do przelewu otrzymasz po potwierdzeniu rezerwacji.</p>
+      <button class="booking-success-btn" onclick="closeSuccess()">← Wróć do terminów</button>
     </div>
   </div>
 
@@ -745,7 +782,7 @@ window.confirmSlot = async (slotKey, notifId) => {
   const sId = sl.studentName.toLowerCase().replace(/\s+/g,'-') + '-' + (sl.phone||'0');
   const existing = students[sId] || { name:sl.studentName, phone:sl.phone||'', level:sl.level, lessons:[] };
   existing.lessons = existing.lessons || [];
-  existing.lessons.push({ slotKey, date:sl.date, hour:sl.hour, hourEnd:sl.hourEnd, dayName:sl.dayName, level:sl.level, done:false, earnings:'', topic:'' });
+  existing.lessons.push({ slotKey, date:sl.date, hour:sl.hour, hourEnd:sl.hourEnd, dayName:sl.dayName, level:sl.level, done:false, earnings:'', topic:'', paid:false });
   await saveStudent(sId, existing);
   if (db) {
     await updateDoc(doc(db,'slots',slotKey), { status:'booked', studentId:sId });
@@ -892,6 +929,7 @@ window.openHistory = (studentId) => {
           <div class="tl-title">
             <span class="pill ${lvlClass}">${lvlLabel}</span>
             <span class="lesson-done-tag ${l.done?'done':'notdone'}">${l.done?'✓ Wykonana':'⏳ Oczekuje'}</span>
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;${l.paid?'background:var(--green-l);color:var(--green)':'background:var(--red-l);color:var(--red)'}">${l.paid?'💚 Opłacone':'🔴 Nieopłacone'}</span>
           </div>
           ${l.topic ? `<div class="tl-topic">${l.topic}</div>` : '<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">Brak tematu</div>'}
         </div>
@@ -1094,6 +1132,7 @@ function renderStudentList() {
             ${!l.done?'disabled':''} style="${!l.done?'opacity:.35':''}">
         </div>
         <div class="lesson-actions">
+          <button class="pay-btn ${l.paid?'pay-paid':'pay-unpaid'}" onclick="togglePaid('${id}',${i})">${l.paid?'💚 Opłacone':'🔴 Nieopłacone'}</button>
           <button class="btn-icon btn-done-toggle" onclick="toggleDone('${id}',${i})">${l.done?'↩ Cofnij':'✓ Wyk.'}</button>
           <button class="btn-icon btn-move" onclick="openMove('${id}',${i})">↕</button>
           <button class="btn-icon btn-del" onclick="deleteLesson('${id}',${i})">✕</button>
@@ -1267,6 +1306,7 @@ window.openBooking = (k, label) => {
 window.cancelBooking = () => {
   selectedSlot = null; selectedLevel = null;
   const c = document.getElementById('booking-card'); if (c) c.style.display = 'none';
+  const s = document.getElementById('booking-success'); if (s) s.style.display = 'none';
 };
 function cancelBooking() { window.cancelBooking(); }
 
@@ -1296,8 +1336,40 @@ window.confirmBooking = async () => {
     notifications.push({id:Date.now().toString(),...notifData});
     saveLocal(); render();
   }
-  showToast('✓ Prośba wysłana! Czekaj na potwierdzenie nauczyciela.');
-  cancelBooking();
+  // show success screen with student name in transfer title
+  const studentNameFinal = name;
+  document.getElementById('success-transfer-title').textContent = `Korepetycje — ${studentNameFinal}`;
+  document.getElementById('booking-card').style.display = 'none';
+  const successEl = document.getElementById('booking-success');
+  successEl.style.display = '';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    successEl.scrollIntoView({ behavior:'smooth', block:'start' });
+  }));
+};
+
+// ── SUCCESS SCREEN ───────────────────────────────────────
+window.closeSuccess = () => {
+  document.getElementById('booking-success').style.display = 'none';
+  selectedSlot = null; selectedLevel = null;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+window.copyTransferTitle = () => {
+  const txt = document.getElementById('success-transfer-title').textContent;
+  navigator.clipboard?.writeText(txt).then(() => showToast('Skopiowano tytuł przelewu!')).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast('Skopiowano!');
+  });
+};
+
+// ── PAYMENT TOGGLE ────────────────────────────────────────
+window.togglePaid = async (studentId, lessonIdx) => {
+  const st = students[studentId]; if (!st) return;
+  st.lessons[lessonIdx].paid = !st.lessons[lessonIdx].paid;
+  await saveStudent(studentId, st);
+  if (!db) render();
+  showToast(st.lessons[lessonIdx].paid ? '💚 Oznaczono jako opłacone' : '🔴 Oznaczono jako nieopłacone');
 };
 
 // ── TOAST ────────────────────────────────────────────────
