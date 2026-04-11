@@ -336,6 +336,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .copy-btn:hover{background:var(--surface3)}
 .booking-success-btn{display:block;width:100%;padding:10px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:1rem;text-align:center}
 .booking-success-btn:hover{opacity:.88}
+
+/* ── STUDENT SEARCH ─────────────────────── */
+.search-wrap{position:relative;margin-bottom:1rem}
+.search-wrap input{width:100%;padding:10px 14px 10px 40px;border:1.5px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;font-weight:500;outline:none;transition:border-color .15s,box-shadow .15s}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+.search-wrap input::placeholder{color:var(--text3)}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;opacity:.5}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:var(--surface3);border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;color:var(--text2);display:none;align-items:center;justify-content:center;font-weight:700;transition:background .12s}
+.search-clear:hover{background:var(--border2)}
+.search-clear.visible{display:flex}
+.search-results-info{font-size:12px;color:var(--text3);font-weight:500;margin-bottom:.75rem;padding:0 2px}
+.student-card.hidden{display:none}
+.no-results{text-align:center;padding:2.5rem;color:var(--text3);font-size:13px;font-weight:500;display:none}
 </style>
 </head>
 <body>
@@ -434,7 +447,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
     <!-- STUDENTS TAB -->
     <div class="tab-panel" id="tab-students">
+      <div class="search-wrap" id="student-search-wrap" style="display:none">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="student-search" placeholder="Szukaj ucznia po imieniu, nazwisku lub numerze…" oninput="filterStudents(this.value)" autocomplete="off">
+        <button class="search-clear" id="search-clear-btn" onclick="clearSearch()">✕</button>
+      </div>
+      <div class="search-results-info" id="search-info" style="display:none"></div>
       <div id="student-list-container"><div class="empty">Brak uczniów — zaakceptuj pierwszą rezerwację</div></div>
+      <div class="no-results" id="no-results">Brak uczniów pasujących do wyszukiwania</div>
     </div>
 
     <!-- EARNINGS TAB -->
@@ -943,6 +963,46 @@ window.openHistory = (studentId) => {
 };
 window.closeHistory = () => { document.getElementById('history-overlay').style.display = 'none'; };
 
+// ── STUDENT SEARCH ───────────────────────────────────────
+window.filterStudents = (query) => {
+  const q = query.trim().toLowerCase();
+  const clearBtn = document.getElementById('search-clear-btn');
+  const info = document.getElementById('search-info');
+  const noResults = document.getElementById('no-results');
+  if (clearBtn) clearBtn.classList.toggle('visible', q.length > 0);
+
+  const cards = document.querySelectorAll('#student-list-container .student-card');
+  if (!cards.length) return;
+
+  if (!q) {
+    cards.forEach(c => c.classList.remove('hidden'));
+    if (info) info.style.display = 'none';
+    if (noResults) noResults.style.display = 'none';
+    return;
+  }
+
+  let visible = 0;
+  cards.forEach(card => {
+    const name = (card.querySelector('.student-name')?.textContent || '').toLowerCase();
+    const phone = (card.querySelector('.student-meta')?.textContent || '').toLowerCase();
+    const matches = name.includes(q) || phone.includes(q);
+    card.classList.toggle('hidden', !matches);
+    if (matches) visible++;
+  });
+
+  if (info) {
+    info.style.display = '';
+    info.textContent = `Znaleziono ${visible} z ${cards.length} uczniów`;
+  }
+  if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+};
+
+window.clearSearch = () => {
+  const input = document.getElementById('student-search');
+  if (input) { input.value = ''; input.focus(); }
+  filterStudents('');
+};
+
 // ── RENDER ───────────────────────────────────────────────
 function render() {
   renderWeekLabels();
@@ -1091,7 +1151,13 @@ function renderNotifs() {
 function renderStudentList() {
   const cont = document.getElementById('student-list-container'); if (!cont) return;
   const ids = Object.keys(students);
-  if (!ids.length) { cont.innerHTML = '<div class="empty">Brak uczniów — zaakceptuj pierwszą rezerwację</div>'; return; }
+  const searchWrap = document.getElementById('student-search-wrap');
+  if (!ids.length) {
+    cont.innerHTML = '<div class="empty">Brak uczniów — zaakceptuj pierwszą rezerwację</div>';
+    if (searchWrap) searchWrap.style.display = 'none';
+    return;
+  }
+  if (searchWrap) searchWrap.style.display = '';
   const now = Date.now();
   const ONE_WEEK = 7*24*60*60*1000, TWO_WEEKS = 14*24*60*60*1000;
 
@@ -1160,6 +1226,10 @@ function renderStudentList() {
   }).join('');
 
   cont.innerHTML = `<div class="student-list">${html}</div>`;
+
+  // re-apply active search query so re-renders don't reset the filter
+  const currentQuery = document.getElementById('student-search')?.value || '';
+  if (currentQuery) filterStudents(currentQuery);
 }
 
 function renderEarnings() {
