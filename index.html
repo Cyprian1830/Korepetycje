@@ -226,7 +226,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .topic-inline input::placeholder{color:var(--text3)}
 
 /* ── EARNINGS ───────────────────────────── */
-.earn-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.earn-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
 .earn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem 1.25rem;box-shadow:var(--shadow)}
 .earn-val{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
 .earn-label{font-size:11px;color:var(--text2);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
@@ -292,7 +292,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 @media(max-width:640px){
   .stats{grid-template-columns:repeat(2,1fr)}
-  .earn-summary{grid-template-columns:repeat(2,1fr)}
+  .earn-summary{grid-template-columns:repeat(2,1fr);}
   .history-stats{grid-template-columns:repeat(2,1fr)}
   .modal{padding:1.25rem}
   .tabs{flex-wrap:wrap}
@@ -349,6 +349,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .search-results-info{font-size:12px;color:var(--text3);font-weight:500;margin-bottom:.75rem;padding:0 2px}
 .student-card.hidden{display:none}
 .no-results{text-align:center;padding:2.5rem;color:var(--text3);font-size:13px;font-weight:500;display:none}
+
+/* ── PAYMENT FILTER ─────────────────────── */
+.pay-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.pay-filter-btn{padding:7px 16px;font-family:inherit;font-size:12px;font-weight:600;border:1.5px solid var(--border2);border-radius:20px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s}
+.pay-filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pay-filter-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.pay-filter-btn.f-paid.active{background:var(--green);border-color:var(--green);color:#fff}
+.pay-filter-btn.f-unpaid.active{background:var(--red);border-color:var(--red);color:#fff}
+.pay-filter-count{font-size:11px;color:var(--text3);font-weight:500;margin-left:auto}
+
+/* ── UNPAID SECTION ─────────────────────── */
+.unpaid-section{background:var(--red-l);border:1.5px solid var(--red-b);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem}
+.unpaid-section-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+.unpaid-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border-radius:var(--rs);font-size:13px;border:1px solid var(--red-b);margin-bottom:6px;transition:background .12s}
+.unpaid-row:last-child{margin-bottom:0}
+.unpaid-row:hover{background:#fff5f5}
+.unpaid-name{font-weight:600;min-width:140px}
+.unpaid-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)}
+.unpaid-amount{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--red);margin-left:auto}
 </style>
 </head>
 <body>
@@ -463,9 +482,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <div class="earn-card"><div class="earn-val" id="earn-total">0 zł</div><div class="earn-label">Łącznie zarobione</div></div>
         <div class="earn-card"><div class="earn-val" id="earn-month">0 zł</div><div class="earn-label">Ten miesiąc</div></div>
         <div class="earn-card"><div class="earn-val" id="earn-lessons">0</div><div class="earn-label">Wykonanych lekcji</div></div>
+        <div class="earn-card" style="border-left:3px solid var(--red)"><div class="earn-val" id="earn-unpaid-total" style="color:var(--red)">0 zł</div><div class="earn-label">Nieopłacone</div></div>
       </div>
+
+      <!-- UNPAID ALERT -->
+      <div id="unpaid-section" style="display:none">
+        <div class="unpaid-section">
+          <div class="unpaid-section-title">🔴 Nieopłacone lekcje</div>
+          <div id="unpaid-list"></div>
+        </div>
+      </div>
+
       <div class="card">
-        <div class="card-title">Historia wykonanych lekcji</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+          <div class="card-title" style="margin-bottom:0">Historia lekcji</div>
+          <div class="pay-filter-bar" style="margin-bottom:0">
+            <button class="pay-filter-btn active" id="f-all"    onclick="setPayFilter('all')">Wszystkie</button>
+            <button class="pay-filter-btn f-paid"   id="f-paid"   onclick="setPayFilter('paid')">💚 Opłacone</button>
+            <button class="pay-filter-btn f-unpaid" id="f-unpaid" onclick="setPayFilter('unpaid')">🔴 Nieopłacone</button>
+            <span class="pay-filter-count" id="pay-filter-count"></span>
+          </div>
+        </div>
         <div id="earn-history"><div class="empty">Brak wykonanych lekcji z wpisaną kwotą</div></div>
       </div>
     </div>
@@ -628,6 +665,7 @@ let slots = {}, notifications = [], students = {};
 let selectedSlot = null, selectedLevel = null, teacherUnlocked = false;
 let moveSlotKey = null;
 let studentViewMode = 'list'; // 'list' or 'cal'
+let payFilter = 'all'; // 'all' | 'paid' | 'unpaid'
 let db = null;
 // local draft state to avoid re-render destroying input focus
 const topicDraft = {};   // lessonKey -> value
@@ -1003,6 +1041,16 @@ window.clearSearch = () => {
   filterStudents('');
 };
 
+// ── PAYMENT FILTER ───────────────────────────────────────
+window.setPayFilter = (f) => {
+  payFilter = f;
+  ['all','paid','unpaid'].forEach(id => {
+    const btn = document.getElementById('f-'+id);
+    if (btn) btn.classList.toggle('active', id === f);
+  });
+  renderEarnings();
+};
+
 // ── RENDER ───────────────────────────────────────────────
 function render() {
   renderWeekLabels();
@@ -1233,24 +1281,72 @@ function renderStudentList() {
 }
 
 function renderEarnings() {
-  let total = 0, month = 0, count = 0;
+  let total = 0, month = 0, count = 0, unpaidTotal = 0;
   const now = new Date(), curMonth = now.getMonth();
-  const history = [];
+  const allLessons = []; // done lessons with earnings
+  const unpaidLessons = []; // ALL lessons (done or not) that are unpaid
+
   Object.values(students).forEach(st => {
-    (st.lessons||[]).filter(l=>l.done && l.earnings).forEach(l => {
-      const earn = parseFloat(l.earnings)||0;
-      total += earn; count++;
-      const [,m] = (l.date||'1.1').split('.').map(Number);
-      if (m-1===curMonth) month += earn;
-      history.push({...l, studentName:st.name, earn});
+    (st.lessons||[]).forEach(l => {
+      // collect unpaid — any lesson not marked paid
+      if (!l.paid) {
+        const earn = parseFloat(l.earnings)||0;
+        unpaidLessons.push({...l, studentName:st.name, earn});
+        if (l.done && earn) unpaidTotal += earn;
+      }
+      // collect history (done + has earnings)
+      if (l.done && l.earnings) {
+        const earn = parseFloat(l.earnings)||0;
+        total += earn; count++;
+        const [,m] = (l.date||'1.1').split('.').map(Number);
+        if (m-1===curMonth) month += earn;
+        allLessons.push({...l, studentName:st.name, earn});
+      }
     });
   });
+
   document.getElementById('earn-total').textContent = total.toFixed(0) + ' zł';
   document.getElementById('earn-month').textContent = month.toFixed(0) + ' zł';
   document.getElementById('earn-lessons').textContent = count;
+  document.getElementById('earn-unpaid-total').textContent = unpaidTotal > 0 ? unpaidTotal.toFixed(0) + ' zł' : '0 zł';
+
+  // Unpaid section
+  const unpaidSection = document.getElementById('unpaid-section');
+  const unpaidList = document.getElementById('unpaid-list');
+  if (unpaidLessons.length && unpaidSection && unpaidList) {
+    unpaidSection.style.display = '';
+    unpaidList.innerHTML = unpaidLessons.sort((a,b) => {
+      const parse = l => { const [d,m]=(l.date||'1.1').split('.').map(Number); return new Date(2025,m-1,d); };
+      return parse(a) - parse(b);
+    }).map(l => `
+      <div class="unpaid-row">
+        <div class="unpaid-name">${l.studentName}</div>
+        <div class="unpaid-date">${l.dayName||''}, ${l.date} · ${l.hour}–${l.hourEnd}</div>
+        ${l.topic ? `<div style="font-size:11px;color:var(--text3);font-style:italic;margin-left:4px">📌 ${l.topic}</div>` : ''}
+        <span class="pill ${l.level==='SP'?'pill-sp':l.level==='LPO'?'pill-lpo':'pill-lro'}" style="margin-left:auto">${l.level==='SP'?'SP':l.level==='LPO'?'L-PO':'L-RO'}</span>
+        <div class="unpaid-amount">${l.earn > 0 ? l.earn.toFixed(0)+' zł' : '—'}</div>
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--amber-l);color:var(--amber);font-weight:700">${l.done?'✓ Wyk.':'⏳ Ocz.'}</span>
+      </div>`
+    ).join('');
+  } else if (unpaidSection) {
+    unpaidSection.style.display = 'none';
+  }
+
+  // History with filter
   const hist = document.getElementById('earn-history');
-  if (!history.length) { hist.innerHTML = '<div class="empty">Brak wykonanych lekcji z wpisaną kwotą</div>'; return; }
-  hist.innerHTML = history.sort((a,b) => {
+  const filtered = payFilter === 'all' ? allLessons
+    : payFilter === 'paid' ? allLessons.filter(l => l.paid)
+    : allLessons.filter(l => !l.paid);
+
+  const countEl = document.getElementById('pay-filter-count');
+  if (countEl) countEl.textContent = payFilter !== 'all' ? `${filtered.length} z ${allLessons.length}` : '';
+
+  if (!filtered.length) {
+    hist.innerHTML = `<div class="empty">${payFilter==='paid'?'Brak opłaconych lekcji':payFilter==='unpaid'?'Brak nieopłaconych lekcji — świetnie!':'Brak wykonanych lekcji z wpisaną kwotą'}</div>`;
+    return;
+  }
+
+  hist.innerHTML = filtered.sort((a,b) => {
     const parse = l => { const [d,m]=(l.date||'1.1').split('.').map(Number); return new Date(2025,m-1,d); };
     return parse(b) - parse(a);
   }).map(l =>
@@ -1261,6 +1357,7 @@ function renderEarnings() {
         ${l.topic ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;font-style:italic">📌 ${l.topic}</div>` : ''}
       </div>
       <span class="pill ${l.level==='SP'?'pill-sp':l.level==='LPO'?'pill-lpo':'pill-lro'}">${l.level==='SP'?'SP':l.level==='LPO'?'L-PO':'L-RO'}</span>
+      <span style="font-size:11px;padding:2px 9px;border-radius:10px;font-weight:700;${l.paid?'background:var(--green-l);color:var(--green)':'background:var(--red-l);color:var(--red)'}">${l.paid?'💚 Opłacone':'🔴 Nieopłacone'}</span>
       <div class="earn-amount">${parseFloat(l.earn).toFixed(0)} zł</div>
     </div>`
   ).join('');
