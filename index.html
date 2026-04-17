@@ -637,9 +637,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="toast" id="toast"></div>
 
 <script type="module">
-// ============================================================
-//  FIREBASE CONFIG
-// ============================================================
+
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
+from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+let auth = null;
+  
 const firebaseConfig = {
   apiKey: "AIzaSyBQ7j2A1hYTB2wDG5tuz3L99_w6FTU57iU",
   authDomain: "edukrok-5e9d1.firebaseapp.com",
@@ -651,7 +654,7 @@ const firebaseConfig = {
 };
 // ============================================================
 
-const TEACHER_PASSWORD = 'matematyka2025';
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -673,6 +676,7 @@ const topicTimers = {};  // lessonKey -> debounce timer
 
 // ── FIREBASE / LOCAL ──────────────────────────────────────
 async function initFirebase() {
+  auth = getAuth(app);
   if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.apiKey === 'AIzaSy...') {
     document.getElementById('config-warn').style.display = '';
     document.getElementById('loading').style.display = 'none';
@@ -743,13 +747,17 @@ window.tryTeacher = () => {
   setTimeout(() => document.getElementById('pw-input').focus(), 50);
 };
 window.closePw = () => document.getElementById('pw-overlay').style.display = 'none';
-window.checkPw = () => {
-  if (document.getElementById('pw-input').value === TEACHER_PASSWORD) {
-    teacherUnlocked = true; closePw(); setMode('teacher');
-  } else {
-    document.getElementById('pw-error').style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
+window.checkPw = async () => {
+  const email = prompt("Podaj email:");
+  const password = prompt("Podaj hasło:");
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    teacherUnlocked = true;
+    closePw();
+    setMode('teacher');
+  } catch (e) {
+    alert("Błąd logowania");
   }
 };
 
