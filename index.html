@@ -592,10 +592,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="overlay" id="pw-overlay" style="display:none">
   <div class="pw-box">
     <h2>🔐 Panel nauczyciela</h2>
-    <p>Podaj hasło aby uzyskać dostęp do panelu zarządzania</p>
-    <input type="password" id="pw-input" placeholder="••••••••••" onkeydown="if(event.key==='Enter')checkPw()">
-    <div class="pw-error" id="pw-error">Nieprawidłowe hasło — spróbuj ponownie</div>
-    <button class="btn-full" onclick="checkPw()">Zaloguj się</button>
+    <p>Zaloguj się aby uzyskać dostęp do panelu</p>
+    <input type="email" id="pw-email" placeholder="Email" style="margin-bottom:.6rem;font-size:14px;letter-spacing:normal;font-family:inherit" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
+    <input type="password" id="pw-input" placeholder="Hasło" onkeydown="if(event.key==='Enter')checkPw()">
+    <div class="pw-error" id="pw-error" style="display:none">Nieprawidłowy email lub hasło</div>
+    <button class="btn-full" id="pw-submit-btn" onclick="checkPw()">Zaloguj się</button>
     <span class="pw-cancel" onclick="closePw()">Anuluj</span>
   </div>
 </div>
@@ -637,12 +638,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="toast" id="toast"></div>
 
 <script type="module">
-
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
-from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
-let auth = null;
-  
+// ============================================================
+//  FIREBASE CONFIG
+// ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyBQ7j2A1hYTB2wDG5tuz3L99_w6FTU57iU",
   authDomain: "edukrok-5e9d1.firebaseapp.com",
@@ -652,10 +650,13 @@ const firebaseConfig = {
   appId: "1:800549846114:web:eab6f7b3de57a9a074a53b",
   measurementId: "G-LMQQ9K4ECG"
 };
+// ============================================================
 
+const TEACHER_PASSWORD = 'matematyka2025';
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const DAYS = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
 const DAYS_FULL = ['Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota','Niedziela'];
@@ -668,6 +669,7 @@ let moveSlotKey = null;
 let studentViewMode = 'list'; // 'list' or 'cal'
 let payFilter = 'all'; // 'all' | 'paid' | 'unpaid'
 let db = null;
+let auth = null;
 // local draft state to avoid re-render destroying input focus
 const topicDraft = {};   // lessonKey -> value
 const topicTimers = {};  // lessonKey -> debounce timer
@@ -678,56 +680,33 @@ async function initFirebase() {
     document.getElementById('config-warn').style.display = '';
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-app').style.display = '';
-    loadLocal(); 
-    render(); 
-    return;
+    loadLocal(); render(); return;
   }
-
   try {
-    // ✅ najpierw inicjalizacja Firebase
     const app = initializeApp(firebaseConfig);
-
-    // ✅ potem auth i firestore
-    auth = getAuth(app);
     db = getFirestore(app);
-
-    // 🔄 slots
+    auth = getAuth(app);
     onSnapshot(collection(db,'slots'), snap => {
-      slots = {}; 
-      snap.forEach(d => { slots[d.id] = d.data(); }); 
-      render();
+      slots = {}; snap.forEach(d => { slots[d.id] = d.data(); }); render();
     });
-
-    // 🔔 notifications
     onSnapshot(query(collection(db,'notifications'), orderBy('ts','asc')), snap => {
-      notifications = []; 
-      snap.forEach(d => { notifications.push({id:d.id,...d.data()}); });
-      renderNotifsBadge(); 
-      if (mode==='teacher') renderNotifs();
+      notifications = []; snap.forEach(d => { notifications.push({id:d.id,...d.data()}); });
+      renderNotifsBadge(); if (mode==='teacher') renderNotifs();
     });
-
-    // 👤 students
     onSnapshot(collection(db,'students'), snap => {
-      students = {}; 
-      snap.forEach(d => { students[d.id] = d.data(); });
-
+      students = {}; snap.forEach(d => { students[d.id] = d.data(); });
       if (mode==='teacher') {
+        // Don't re-render student list if user is typing in a topic/earnings field
         const focused = document.activeElement;
         const isTypingInList = focused && (focused.closest?.('.student-lessons'));
         if (!isTypingInList) renderStudentList();
       }
     });
-
-    // ✅ UI start
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main-app').style.display = '';
     render();
-
   } catch(e) {
-    document.getElementById('loading').innerHTML =
-      `<div style="color:var(--red);font-size:13px;font-weight:600">
-        Błąd Firebase: ${e.message}
-      </div>`;
+    document.getElementById('loading').innerHTML = `<div style="color:var(--red);font-size:13px;font-weight:600">Błąd Firebase: ${e.message}</div>`;
   }
 }
 
@@ -767,18 +746,35 @@ window.tryTeacher = () => {
   document.getElementById('pw-error').style.display = 'none';
   setTimeout(() => document.getElementById('pw-input').focus(), 50);
 };
-window.closePw = () => document.getElementById('pw-overlay').style.display = 'none';
+window.closePw = () => {
+  document.getElementById('pw-overlay').style.display = 'none';
+  const err = document.getElementById('pw-error'); if(err) err.style.display='none';
+};
 window.checkPw = async () => {
-  const email = prompt("Podaj email:");
-  const password = prompt("Podaj hasło:");
-
+  const emailEl = document.getElementById('pw-email');
+  const passEl  = document.getElementById('pw-input');
+  const errEl   = document.getElementById('pw-error');
+  const btnEl   = document.getElementById('pw-submit-btn');
+  const email    = emailEl?.value.trim() || '';
+  const password = passEl?.value || '';
+  if (!email || !password) {
+    if(errEl){ errEl.style.display='block'; errEl.textContent='Wpisz email i hasło'; }
+    return;
+  }
+  if (btnEl) { btnEl.textContent = 'Logowanie…'; btnEl.disabled = true; }
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    if (auth) {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
     teacherUnlocked = true;
     closePw();
     setMode('teacher');
-  } catch (e) {
-    alert("Błąd logowania");
+  } catch(e) {
+    if(errEl){ errEl.style.display='block'; errEl.textContent='Nieprawidłowy email lub hasło'; }
+    if(passEl) passEl.value='';
+    if(passEl) passEl.focus();
+  } finally {
+    if (btnEl) { btnEl.textContent = 'Zaloguj się'; btnEl.disabled = false; }
   }
 };
 
@@ -1524,21 +1520,29 @@ window.confirmBooking = async () => {
   const now = new Date(), timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const raw = `${name} (${phone}) · ${s.dayName}, ${s.date} ${s.hour}–${s.hourEnd} · ${lvlLabel(selectedLevel)}${note?' · '+note:''}`;
   const notifData = { text:'📋 Nowa prośba: '+raw, rawText:raw, time:`Dziś ${timeStr}`, read:false, slotKey:selectedSlot, ts:Date.now() };
-  if (db) {
-    await updateDoc(doc(db,'slots',selectedSlot), { status:'pending', studentName:name, phone, level:selectedLevel, note });
-    await addDoc(collection(db,'notifications'), notifData);
-  } else {
-    slots[selectedSlot] = {...s, status:'pending', studentName:name, phone, level:selectedLevel, note};
-    notifications.push({id:Date.now().toString(),...notifData});
-    saveLocal(); render();
+  // Capture slot info BEFORE any async Firebase update (avoids race condition)
+  const capturedDate = s.date || '';
+  const capturedYear = new Date().getFullYear();
+  const fullDate = capturedDate ? capturedDate + '.' + capturedYear : '';
+  const transferTitle = `Korepetycje — ${name}${fullDate ? ' ' + fullDate : ''}`;
+
+  try {
+    if (db) {
+      await updateDoc(doc(db,'slots',selectedSlot), { status:'pending', studentName:name, phone, level:selectedLevel, note });
+      await addDoc(collection(db,'notifications'), notifData);
+    } else {
+      slots[selectedSlot] = {...s, status:'pending', studentName:name, phone, level:selectedLevel, note};
+      notifications.push({id:Date.now().toString(),...notifData});
+      saveLocal(); render();
+    }
+  } catch(err) {
+    console.error('Booking error:', err);
+    showToast('Błąd zapisu — spróbuj ponownie');
+    return;
   }
-  // show success screen with student name in transfer title
-  const studentNameFinal = name;
-  // Build transfer title: "Korepetycje — Jan Kowalski 14.04.2025"
-  const slotDate = slots[selectedSlot]?.date || '';
-  const slotYear = new Date().getFullYear();
-  const fullDate = slotDate ? slotDate + '.' + slotYear : '';
-  document.getElementById('success-transfer-title').textContent = `Korepetycje — ${studentNameFinal}${fullDate ? ' ' + fullDate : ''}`;
+
+  // Show success screen
+  document.getElementById('success-transfer-title').textContent = transferTitle;
   document.getElementById('booking-card').style.display = 'none';
   const successEl = document.getElementById('booking-success');
   successEl.style.display = '';
