@@ -109,10 +109,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .slot{width:100%;height:32px;border-radius:5px;border:none;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.02em}
 .slot-available{background:var(--accent-l);color:var(--accent);border:1.5px solid var(--accent-b)}
 .slot-available:hover{background:#bfdbfe;transform:scale(1.05)}
-.slot-booked{background:var(--green-l);color:var(--green);border:1.5px solid var(--green-b);cursor:default}
-.slot-done{background:#f8fafc;color:#94a3b8;border:1.5px solid #e2e8f0;cursor:default}
-.slot-pending{background:var(--amber-l);color:var(--amber);border:1.5px solid var(--amber-b);cursor:default}
-.slot-booked:hover,.slot-pending:hover,.slot-done:hover{transform:none}
+.slot-booked{background:var(--green-l);color:var(--green);border:1.5px solid var(--green-b);cursor:pointer}
+.slot-done{background:#f8fafc;color:#94a3b8;border:1.5px solid #e2e8f0;cursor:pointer}
+.slot-pending{background:var(--amber-l);color:var(--amber);border:1.5px solid var(--amber-b);cursor:pointer}
+.slot-booked:hover,.slot-pending:hover,.slot-done:hover{opacity:.8;transform:scale(1.05)}
 
 /* ── TOOLTIP ────────────────────────────── */
 .cal-tooltip{
@@ -368,6 +368,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .unpaid-name{font-weight:600;min-width:140px}
 .unpaid-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)}
 .unpaid-amount{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--red);margin-left:auto}
+
+/* ── SLOT MGMT MODAL ────────────────────── */
+.slot-modal{background:var(--surface);border-radius:16px;padding:1.75rem;width:380px;max-width:96vw;box-shadow:var(--shadow-lg);border:1px solid var(--border)}
+.slot-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.slot-modal-header h3{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.slot-modal-info{background:var(--bg);border-radius:var(--rs);padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.slot-modal-info .smi-row{display:flex;gap:8px;align-items:center}
+.slot-modal-info .smi-label{color:var(--text3);font-size:11px;font-weight:600;min-width:52px}
+.slot-modal-actions{display:flex;flex-direction:column;gap:8px}
+.slot-action-btn{padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;border-radius:var(--rs);cursor:pointer;border:1.5px solid;text-align:left;transition:all .12s;background:transparent;display:flex;align-items:center;gap:10px}
+.slot-action-btn:hover{transform:translateX(2px)}
+.sab-done{color:var(--green);border-color:var(--green-b)}
+.sab-done:hover{background:var(--green-l)}
+.sab-undone{color:var(--amber);border-color:var(--amber-b)}
+.sab-undone:hover{background:var(--amber-l)}
+.sab-paid{color:var(--green);border-color:var(--green-b)}
+.sab-paid:hover{background:var(--green-l)}
+.sab-unpaid{color:var(--red);border-color:var(--red-b)}
+.sab-unpaid:hover{background:var(--red-l)}
+.sab-move{color:var(--accent);border-color:var(--accent-b)}
+.sab-move:hover{background:var(--accent-l)}
+.sab-delete{color:var(--red);border-color:var(--red-b)}
+.sab-delete:hover{background:var(--red-l)}
+.sab-cancel{color:var(--text2);border-color:var(--border2)}
+.sab-cancel:hover{background:var(--surface2)}
 </style>
 </head>
 <body>
@@ -586,6 +611,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 
 </div><!-- /main-app -->
+
+<!-- SLOT MANAGEMENT MODAL -->
+<div class="overlay" id="slot-modal-overlay" style="display:none" onclick="if(event.target===this)closeSlotModal()">
+  <div class="slot-modal">
+    <div class="slot-modal-header">
+      <h3 id="slot-modal-title">Zarządzaj lekcją</h3>
+      <button class="modal-close" onclick="closeSlotModal()">✕</button>
+    </div>
+    <div class="slot-modal-info" id="slot-modal-info"></div>
+    <div class="slot-modal-actions" id="slot-modal-actions"></div>
+  </div>
+</div>
 </div><!-- /app -->
 
 <!-- PASSWORD OVERLAY -->
@@ -1158,7 +1195,7 @@ function renderTeacherCal() {
       if (s) {
         const cls = {available:'slot-available',booked:'slot-booked',pending:'slot-pending',done:'slot-done'}[s.status]||'slot-available';
         const lbl = {available:'✕',booked:'✓',pending:'?',done:'✔'}[s.status]||'';
-        const onclick = s.status==='available' ? `removeSlot('${k}')` : 'void(0)';
+        const onclick = s.status==='available' ? `removeSlot('${k}')` : `openSlotModal('${k}')`;
         let ttHtml = '';
         if (s.status === 'available') {
           ttHtml = `<strong>Wolny slot</strong><div class="tt-row"><span class="tt-label">Godz.:</span>${s.hour} – ${s.hourEnd}</div><div class="tt-row" style="margin-top:5px;opacity:.55;font-size:10px">Kliknij aby usunąć</div>`;
@@ -1577,6 +1614,83 @@ window.togglePaid = async (studentId, lessonIdx, btnEl) => {
     btnEl.className = 'pay-btn ' + (isPaid ? 'pay-paid' : 'pay-unpaid');
     btnEl.textContent = isPaid ? '💚 Opłacone' : '🔴 Nieopłacone';
   }
+  await saveStudent(studentId, st);
+  if (!db) render();
+  showToast(isPaid ? '💚 Oznaczono jako opłacone' : '🔴 Oznaczono jako nieopłacone');
+};
+
+// ── SLOT MANAGEMENT MODAL ────────────────────────────────
+window.openSlotModal = (slotKey) => {
+  const s = slots[slotKey]; if (!s) return;
+  // find student + lesson index
+  let foundStudent = null, foundLessonIdx = -1, foundStudentId = null;
+  Object.entries(students).forEach(([id, st]) => {
+    (st.lessons||[]).forEach((l, i) => {
+      if (l.slotKey === slotKey) { foundStudent = st; foundLessonIdx = i; foundStudentId = id; }
+    });
+  });
+
+  const statusLabel = {booked:'✓ Potwierdzony', pending:'⏳ Oczekuje', done:'✔ Wykonany'}[s.status] || s.status;
+  const lvlLabel = s.level==='SP'?'Szkoła podstawowa':s.level==='LPO'?'Liceum — podstawowy':s.level==='LRO'?'Liceum — rozszerzony':'—';
+
+  document.getElementById('slot-modal-title').textContent = s.studentName || 'Lekcja';
+  document.getElementById('slot-modal-info').innerHTML = `
+    <div class="smi-row"><span class="smi-label">Termin</span><strong>${s.dayName}, ${s.date} ${s.hour}–${s.hourEnd}</strong></div>
+    <div class="smi-row"><span class="smi-label">Telefon</span>${s.phone||'—'}</div>
+    <div class="smi-row"><span class="smi-label">Poziom</span>${lvlLabel}</div>
+    <div class="smi-row"><span class="smi-label">Status</span>${statusLabel}</div>
+    ${s.topic ? `<div class="smi-row"><span class="smi-label">Temat</span><em>${s.topic}</em></div>` : ''}
+    ${s.note ? `<div class="smi-row"><span class="smi-label">Uwagi</span>${s.note}</div>` : ''}
+  `;
+
+  // Build action buttons depending on state
+  let actions = '';
+  if (foundStudent && foundLessonIdx >= 0) {
+    const l = foundStudent.lessons[foundLessonIdx];
+    // Done toggle
+    if (l.done) {
+      actions += `<button class="slot-action-btn sab-undone" onclick="slotModalToggleDone('${foundStudentId}',${foundLessonIdx})">↩ Cofnij wykonanie lekcji</button>`;
+    } else {
+      actions += `<button class="slot-action-btn sab-done" onclick="slotModalToggleDone('${foundStudentId}',${foundLessonIdx})">✓ Oznacz jako wykonaną</button>`;
+    }
+    // Paid toggle
+    if (l.paid) {
+      actions += `<button class="slot-action-btn sab-unpaid" onclick="slotModalTogglePaid('${foundStudentId}',${foundLessonIdx})">🔴 Oznacz jako nieopłaconą</button>`;
+    } else {
+      actions += `<button class="slot-action-btn sab-paid" onclick="slotModalTogglePaid('${foundStudentId}',${foundLessonIdx})">💚 Oznacz jako opłaconą</button>`;
+    }
+    // Move
+    actions += `<button class="slot-action-btn sab-move" onclick="closeSlotModal();openMove('${foundStudentId}',${foundLessonIdx})">↕ Przenieś lekcję</button>`;
+    // Delete
+    actions += `<button class="slot-action-btn sab-delete" onclick="closeSlotModal();deleteLesson('${foundStudentId}',${foundLessonIdx})">✕ Usuń lekcję</button>`;
+  } else if (s.status === 'pending') {
+    // pending slot - confirm/reject
+    const notif = notifications.find(n => n.slotKey === slotKey);
+    if (notif) {
+      actions += `<button class="slot-action-btn sab-done" onclick="closeSlotModal();confirmSlot('${slotKey}','${notif.id}')">✓ Potwierdź rezerwację</button>`;
+      actions += `<button class="slot-action-btn sab-delete" onclick="closeSlotModal();rejectSlot('${slotKey}','${notif.id}')">✕ Odrzuć rezerwację</button>`;
+    }
+  }
+  actions += `<button class="slot-action-btn sab-cancel" onclick="closeSlotModal()">Anuluj</button>`;
+
+  document.getElementById('slot-modal-actions').innerHTML = actions;
+  document.getElementById('slot-modal-overlay').style.display = 'flex';
+};
+
+window.closeSlotModal = () => {
+  document.getElementById('slot-modal-overlay').style.display = 'none';
+};
+
+window.slotModalToggleDone = async (studentId, lessonIdx) => {
+  closeSlotModal();
+  await toggleDone(studentId, lessonIdx);
+};
+
+window.slotModalTogglePaid = async (studentId, lessonIdx) => {
+  closeSlotModal();
+  const st = students[studentId]; if (!st) return;
+  st.lessons[lessonIdx].paid = !st.lessons[lessonIdx].paid;
+  const isPaid = st.lessons[lessonIdx].paid;
   await saveStudent(studentId, st);
   if (!db) render();
   showToast(isPaid ? '💚 Oznaczono jako opłacone' : '🔴 Oznaczono jako nieopłacone');
